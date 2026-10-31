@@ -3,7 +3,6 @@
 
   const QUESTIONS = window.CTFL_QUESTIONS || [];
   const GLOSSARY = window.CTFL_GLOSSARY || [];
-  const MATCH_PAIRS_PER_ROUND = 4;
 
   const app = document.getElementById('app');
   const toastEl = document.getElementById('toast');
@@ -219,7 +218,7 @@
       card('flashcards', 'Flashcard Mode', 'Flip through official glossary terms at your own pace, no scoring',
         `${GLOSSARY.length} terms`, progress('flashcards', 'Card')),
       card('matching', 'Matching Mode', 'Grid matching — pair glossary terms with their definitions',
-        `${GLOSSARY.length} terms`, progress('matching', 'Pairs', MATCH_PAIRS_PER_ROUND))));
+        `${GLOSSARY.length} terms`, progress('matching', 'Pairs', matchRoundSize()))));
   }
 
   // ---------- quiz ----------
@@ -428,16 +427,68 @@
   let matchMiss = null; // [cardKey, cardKey] briefly shown red
   let matchBusy = false;
 
-  function matchRound(deck) {
-    const n = Math.min(MATCH_PAIRS_PER_ROUND, deck.size - deck.pos);
-    const items = deck.order.slice(deck.pos, deck.pos + n);
-    if (!deck.extra || !Array.isArray(deck.extra.layout) || deck.extra.layout.length !== n * 2) {
-      const cards = items.flatMap(i => [{ kind: 'term', i }, { kind: 'def', i }]);
-      deck.extra = { layout: shuffledIndices(cards.length).map(k => cards[k]), solved: [] };
-      deck.save();
-    }
-    return { n, items, round: deck.extra };
+  // Phones get 3 pairs so a round fits on one screen; tablets and desktops get 4.
+  function matchPairsPerRound() {
+    return Math.min(window.innerWidth, window.innerHeight) >= 600 ? 4 : 3;
   }
+
+  // Size of the round in progress (for the home screen), or of the next one to be dealt.
+  function matchRoundSize() {
+    const d = startedDeck('matching');
+    return d && d.extra && Array.isArray(d.extra.terms) ? d.extra.terms.length : matchPairsPerRound();
+  }
+
+  // A round is a slice of the shuffled deck: terms in one column, definitions in the other,
+  // each column in its own random order. The round's size is fixed once dealt.
+  function matchRound(deck) {
+    const saved = deck.extra;
+    if (saved && Array.isArray(saved.terms) && Array.isArray(saved.defs) && saved.terms.length === saved.defs.length) {
+      return { n: saved.terms.length, round: saved };
+    }
+    const per = matchPairsPerRound();
+    const remaining = deck.size - deck.pos;
+    const n = remaining - per < 2 ? remaining : per; // fold a would-be 1-pair last round into this one
+    const items = deck.order.slice(deck.pos, deck.pos + n);
+    deck.extra = {
+      terms: shuffledIndices(n).map(k => items[k]),
+      defs: shuffledIndices(n).map(k => items[k]),
+      solved: [],
+    };
+    deck.save();
+    return { n, round: deck.extra };
+  }
+
+  // Rows size to their content, so a long definition takes room from short ones. Text only
+  // shrinks when needed: a word too wide for its card shrinks that card alone; if the round is
+  // still taller than the screen, the definitions scale down together, then the terms too.
+  const MATCH_MIN_FONT_PX = 11;
+  function fitMatchText() {
+    const grid = app.querySelector('.match-grid');
+    if (!grid) return;
+    const texts = [...grid.querySelectorAll('.match-text')];
+    texts.forEach(t => { t.style.fontSize = ''; });
+    for (const t of texts) {
+      let size = parseFloat(getComputedStyle(t).fontSize);
+      while (t.scrollWidth > t.clientWidth && size > MATCH_MIN_FONT_PX) {
+        size = Math.max(MATCH_MIN_FONT_PX, size * 0.92);
+        t.style.fontSize = size + 'px';
+      }
+    }
+    const tooTall = () => grid.scrollHeight > grid.clientHeight + 1;
+    const scaleDown = group => {
+      const base = group.map(t => parseFloat(getComputedStyle(t).fontSize));
+      let scale = 1;
+      while (tooTall() && base.some(b => b * scale > MATCH_MIN_FONT_PX)) {
+        scale *= 0.94;
+        group.forEach((t, k) => { t.style.fontSize = Math.max(MATCH_MIN_FONT_PX, base[k] * scale) + 'px'; });
+      }
+    };
+    scaleDown(texts.filter(t => t.parentElement.classList.contains('def')));
+    scaleDown(texts);
+  }
+  window.addEventListener('resize', () => {
+    if (location.hash === '#matching') fitMatchText();
+  });
 
   function renderMatching() {
     const deck = getDeck('matching');
@@ -485,14 +536,16 @@
         disabled: solved,
         'aria-pressed': String(!!matchPick && key(matchPick) === key(c)),
         onclick: () => choose(c),
-      }, c.kind === 'term' ? g.term : g.definition);
+      }, h('span', { class: 'match-text' }, c.kind === 'term' ? g.term : g.definition));
     };
 
     mount(
       topbar('Matching Mode', `Pairs ${deck.pos + 1}–${deck.pos + n} / ${deck.size}`),
-      h('div', { class: 'match-grid' }, round.layout.map(cardEl)),
+      h('div', { class: 'match-grid' },
+        round.terms.map((t, r) => [cardEl({ kind: 'term', i: t }), cardEl({ kind: 'def', i: round.defs[r] })])),
       h('div', { class: 'match-foot' },
-        `${round.solved.length} of ${n} matched · tap a term, then its definition (or the other way round)`));
+        `${round.solved.length} of ${n} matched · tap a term, then its definition`));
+    fitMatchText();
 
     // Round finished (also covers returning to a finished round): pause briefly, then deal the next batch.
     if (round.solved.length === n && !matchBusy) {
@@ -515,6 +568,8 @@
     matchPick = null;
     matchMiss = null;
     matchBusy = false;
+    // Matching is locked to the screen height; every other mode scrolls normally.
+    document.body.classList.toggle('fit-screen', name === 'matching');
     (routes[name] || renderHome)();
     window.scrollTo(0, 0);
   }
