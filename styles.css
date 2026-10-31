@@ -120,6 +120,24 @@ button { font: inherit; color: inherit; }
   text-overflow: ellipsis;
 }
 @media (max-width: 430px) { .mode-name { visibility: hidden; } }
+.home-btn { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 560px) { .restart-label { display: none; } .restart-btn { padding: 0.3rem 0.7rem; } }
+
+/* "Start over?" confirmation */
+dialog.confirm {
+  border: 0;
+  border-radius: 1.1rem;
+  padding: 1.5rem 1.5rem 1.25rem;
+  width: min(26rem, calc(100vw - 2rem));
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+dialog.confirm::backdrop { background: rgba(43, 42, 40, 0.45); }
+dialog.confirm h2 { font-size: 1.2rem; margin: 0 0 0.6rem; }
+dialog.confirm p { font-size: 0.95rem; line-height: 1.5; color: var(--muted); margin: 0 0 1.4rem; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
+.btn.danger { background: var(--wrong); border-color: var(--wrong); color: #fff; }
 .counter {
   font-size: 0.875rem;
   background: var(--accent-soft);

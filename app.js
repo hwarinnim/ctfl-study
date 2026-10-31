@@ -160,6 +160,14 @@
         this.save();
       }
     }
+    // Starts the deck over from scratch: new random order, first item, pass 1.
+    reset() {
+      this.order = shuffledIndices(this.size);
+      this.pos = 0;
+      this.pass = 1;
+      this.extra = null;
+      this.save();
+    }
   }
 
   const DECK_SIZES = { quiz: QUESTIONS.length, flashcards: GLOSSARY.length, matching: GLOSSARY.length };
@@ -177,14 +185,55 @@
   let keyHandler = null;
   document.addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (document.querySelector('dialog[open]')) return; // the confirm dialog handles its own keys
     if (keyHandler) keyHandler(e);
   });
 
-  function topbar(modeName, counterText) {
+  // Asks before wiping a mode's progress. Resolves true only on an explicit "Start over".
+  function confirmDialog({ title, body, confirmLabel }) {
+    return new Promise(resolve => {
+      const dlg = h('dialog', { class: 'confirm', 'aria-labelledby': 'confirm-title' },
+        h('h2', { id: 'confirm-title' }, title),
+        h('p', null, body),
+        h('div', { class: 'confirm-actions' },
+          h('button', { class: 'btn secondary', type: 'button', value: 'cancel', onclick: () => dlg.close('cancel') }, 'Cancel'),
+          h('button', { class: 'btn danger', type: 'button', onclick: () => dlg.close('confirm') }, confirmLabel)));
+      // Tapping the dimmed backdrop counts as Cancel.
+      dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close('cancel'); });
+      dlg.addEventListener('close', () => {
+        dlg.remove();
+        resolve(dlg.returnValue === 'confirm');
+      });
+      document.body.append(dlg);
+      dlg.showModal();
+      dlg.querySelector('.btn.secondary').focus(); // the safe choice has focus, so Enter cancels
+    });
+  }
+
+  function topbar(modeName, counterText, onRestart) {
     return h('div', { class: 'topbar' },
       h('button', { class: 'home-btn', type: 'button', onclick: () => { location.hash = ''; } }, '← Modes'),
       h('div', { class: 'mode-name' }, modeName),
+      onRestart && h('button', { class: 'home-btn restart-btn', type: 'button', 'aria-label': `Start ${modeName} over`, onclick: onRestart },
+        h('span', { 'aria-hidden': 'true' }, '↺'), h('span', { class: 'restart-label' }, ' Start over')),
       h('div', { class: 'counter', 'aria-label': 'Progress' }, counterText));
+  }
+
+  // Shared "start over" flow for every mode: confirm, reset that mode's deck only, re-render.
+  async function restartMode(name, modeName, noun, extraReset) {
+    const deck = getDeck(name);
+    const ok = await confirmDialog({
+      title: `Start ${modeName} over?`,
+      body: `All ${deck.size} ${noun} will be reshuffled and you'll begin again from the first one. ` +
+        `Your progress in this mode will be lost. The other modes aren't affected.`,
+      confirmLabel: 'Start over',
+    });
+    if (!ok) return;
+    deck.reset();
+    if (extraReset) extraReset();
+    routes[name]();
+    window.scrollTo(0, 0);
+    toast(`${modeName} restarted — ${deck.size} ${noun} reshuffled.`);
   }
 
   function mount(...kids) {
@@ -327,7 +376,8 @@
       h('span', { class: 'chip' }, `${q.lo} · ${q.k_level}`));
 
     mount(
-      topbar('Quiz Mode', `Question ${deck.pos + 1} / ${deck.size}`),
+      topbar('Quiz Mode', `Question ${deck.pos + 1} / ${deck.size}`,
+        () => restartMode('quiz', 'Quiz Mode', 'questions', () => store.set('quizScore', null))),
       h('div', { class: 'subline' },
         score.answered ? `This pass: ${score.correct} / ${score.answered} correct` : (deck.pass > 1 ? `Pass ${deck.pass}` : ' ')),
       st.submitted && h('div', { class: 'verdict ' + (isRight ? 'right' : 'wrong') }, isRight ? '✓ Correct' : '✕ Incorrect'),
@@ -408,7 +458,8 @@
     }, label);
 
     mount(
-      topbar('Flashcard Mode', `Card ${deck.pos + 1} / ${deck.size}`),
+      topbar('Flashcard Mode', `Card ${deck.pos + 1} / ${deck.size}`,
+        () => restartMode('flashcards', 'Flashcard Mode', 'cards', () => { flipped = false; })),
       h('div', { class: 'seg-row' },
         h('span', { class: 'seg-label', id: 'front-label' }, 'Show first'),
         h('div', { class: 'seg', role: 'group', 'aria-labelledby': 'front-label' },
@@ -493,7 +544,6 @@
   function renderMatching() {
     const deck = getDeck('matching');
     const { n, round } = matchRound(deck);
-    const startPos = deck.pos;
     document.title = `Pairs ${deck.pos + 1}–${deck.pos + n} / ${deck.size} · CTFL Study`;
     keyHandler = null;
 
@@ -540,7 +590,8 @@
     };
 
     mount(
-      topbar('Matching Mode', `Pairs ${deck.pos + 1}–${deck.pos + n} / ${deck.size}`),
+      topbar('Matching Mode', `Pairs ${deck.pos + 1}–${deck.pos + n} / ${deck.size}`,
+        () => restartMode('matching', 'Matching Mode', 'terms', () => { matchPick = null; matchMiss = null; matchBusy = false; })),
       h('div', { class: 'match-grid' },
         round.terms.map((t, r) => [cardEl({ kind: 'term', i: t }), cardEl({ kind: 'def', i: round.defs[r] })])),
       h('div', { class: 'match-foot' },
@@ -552,7 +603,7 @@
       matchBusy = true;
       setTimeout(() => {
         matchBusy = false;
-        if (location.hash !== '#matching' || deck.pos !== startPos) return;
+        if (location.hash !== '#matching' || deck.extra !== round) return;
         if (deck.advance(n)) toast(`Deck complete — all ${deck.size} terms matched. Reshuffled; pass ${deck.pass} starts now.`);
         renderMatching();
       }, 650);
