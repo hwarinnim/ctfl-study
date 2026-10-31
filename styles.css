@@ -377,7 +377,10 @@ body.fit-screen .content { min-height: 0; overflow: hidden; }
   cursor: pointer;
   transition: border-color .12s, background .12s, opacity .3s;
 }
-.match-text { display: block; width: 100%; overflow-wrap: normal; }
+/* A word too long for its card breaks onto the next line instead of shrinking;
+   in the narrow term column the browser adds a hyphen where it can. */
+.match-text { display: block; width: 100%; overflow-wrap: anywhere; }
+.match-card.term .match-text { -webkit-hyphens: auto; hyphens: auto; }
 .match-card:hover:not(:disabled) { border-color: var(--box); }
 .match-card.term { font-weight: 700; font-size: 1rem; background: var(--chip); }
 .match-card.def { color: var(--ink); }

@@ -509,33 +509,21 @@
     return { n, round: deck.extra };
   }
 
-  // Rows size to their content, so a long definition takes room from short ones. Text only
-  // shrinks when needed: a word too wide for its card shrinks that card alone; if the round is
-  // still taller than the screen, the definitions scale down together, then the terms too.
+  // Rows size to their content, so a long definition takes room from short ones. Terms always
+  // keep their full size (a word too long for the card wraps onto the next line instead); only
+  // when the round is taller than the screen do the definitions scale down together to fit.
   const MATCH_MIN_FONT_PX = 11;
   function fitMatchText() {
     const grid = app.querySelector('.match-grid');
     if (!grid) return;
-    const texts = [...grid.querySelectorAll('.match-text')];
-    texts.forEach(t => { t.style.fontSize = ''; });
-    for (const t of texts) {
-      let size = parseFloat(getComputedStyle(t).fontSize);
-      while (t.scrollWidth > t.clientWidth && size > MATCH_MIN_FONT_PX) {
-        size = Math.max(MATCH_MIN_FONT_PX, size * 0.92);
-        t.style.fontSize = size + 'px';
-      }
+    const defs = [...grid.querySelectorAll('.match-card.def .match-text')];
+    defs.forEach(t => { t.style.fontSize = ''; });
+    const base = defs.map(t => parseFloat(getComputedStyle(t).fontSize));
+    let scale = 1;
+    while (grid.scrollHeight > grid.clientHeight + 1 && base.some(b => b * scale > MATCH_MIN_FONT_PX)) {
+      scale *= 0.94;
+      defs.forEach((t, k) => { t.style.fontSize = Math.max(MATCH_MIN_FONT_PX, base[k] * scale) + 'px'; });
     }
-    const tooTall = () => grid.scrollHeight > grid.clientHeight + 1;
-    const scaleDown = group => {
-      const base = group.map(t => parseFloat(getComputedStyle(t).fontSize));
-      let scale = 1;
-      while (tooTall() && base.some(b => b * scale > MATCH_MIN_FONT_PX)) {
-        scale *= 0.94;
-        group.forEach((t, k) => { t.style.fontSize = Math.max(MATCH_MIN_FONT_PX, base[k] * scale) + 'px'; });
-      }
-    };
-    scaleDown(texts.filter(t => t.parentElement.classList.contains('def')));
-    scaleDown(texts);
   }
   window.addEventListener('resize', () => {
     if (location.hash === '#matching') fitMatchText();
