@@ -1,0 +1,15 @@
+{
+  "name": "CTFL Study",
+  "short_name": "CTFL Study",
+  "description": "Study app for the ISTQB CTFL v4.0 exam: official sample-exam questions and glossary.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ece7dc",
+  "theme_color": "#ece7dc",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
