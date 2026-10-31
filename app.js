@@ -355,18 +355,42 @@
       ['Reference', g.reference],
     ].filter(([, v]) => v).map(([k, v]) => h('span', { class: 'chip' }, `${k}: ${v}`));
 
+    // Which side faces up first is a viewer preference; the back always shows the full card.
+    const defFirst = store.get('flashFront') === 'definition';
+    const setFront = side => {
+      store.set('flashFront', side);
+      flipped = false;
+      renderFlashcards();
+    };
+
     const face = flipped
-      ? h('div', { class: 'card back', role: 'button', tabindex: '0', 'aria-label': 'Card back, activate to show term', onclick: flip },
+      ? h('div', { class: 'card back', role: 'button', tabindex: '0', 'aria-label': 'Card back, activate to flip back', onclick: flip },
           h('div', { class: 'term' }, g.term),
           h('div', { class: 'def' }, g.definition),
           metaChips.length > 0 && h('div', { class: 'meta-row' }, metaChips),
           h('div', { class: 'flip-hint' }, 'tap card to flip back ↺'))
-      : h('div', { class: 'card', role: 'button', tabindex: '0', 'aria-label': 'Card front, activate to show definition', onclick: flip },
-          h('div', { class: 'term' }, g.term),
-          h('div', { class: 'flip-hint' }, 'tap card to see definition'));
+      : defFirst
+        ? h('div', { class: 'card', role: 'button', tabindex: '0', 'aria-label': 'Card front, activate to show term', onclick: flip },
+            h('div', { class: 'def prompt' }, g.definition),
+            h('div', { class: 'flip-hint' }, 'tap card to see term'))
+        : h('div', { class: 'card', role: 'button', tabindex: '0', 'aria-label': 'Card front, activate to show definition', onclick: flip },
+            h('div', { class: 'term' }, g.term),
+            h('div', { class: 'flip-hint' }, 'tap card to see definition'));
+
+    const segBtn = (side, label) => h('button', {
+      type: 'button',
+      class: 'seg-btn',
+      'aria-pressed': String(defFirst === (side === 'definition')),
+      onclick: () => setFront(side),
+    }, label);
 
     mount(
       topbar('Flashcard Mode', `Card ${deck.pos + 1} / ${deck.size}`),
+      h('div', { class: 'seg-row' },
+        h('span', { class: 'seg-label', id: 'front-label' }, 'Show first'),
+        h('div', { class: 'seg', role: 'group', 'aria-labelledby': 'front-label' },
+          segBtn('term', 'Term'),
+          segBtn('definition', 'Definition'))),
       h('div', { class: 'flash-area' }, face),
       h('div', { class: 'btn-row' },
         h('button', { class: 'btn secondary', type: 'button', disabled: deck.pos === 0, onclick: prev }, '← Prev'),

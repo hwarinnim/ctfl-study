@@ -281,6 +281,15 @@ button { font: inherit; color: inherit; }
 .card.back .term { font-size: 18px; margin-bottom: 14px; }
 .card.back { text-align: left; }
 .card .def { font-size: 16px; line-height: 1.6; }
+.card .def.prompt { font-size: 18px; line-height: 1.6; text-align: center; }
+.seg-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: -6px 0 16px; }
+.seg-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; padding: 2px; }
+.seg-btn {
+  background: none; border: 0; border-radius: 999px;
+  padding: 5px 14px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer;
+}
+.seg-btn[aria-pressed="true"] { background: var(--ink); color: var(--btn-ink); }
 .card .flip-hint {
   font-size: 11px; color: var(--muted); margin-top: 20px; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase; text-align: center;

@@ -1,6 +1,6 @@
 // Offline support: everything is cached on install, then served from cache while
 // a fresh copy is fetched in the background (so updates show up on the next launch).
-const CACHE = 'ctfl-study-v1';
+const CACHE = 'ctfl-study-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -19,7 +19,9 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's HTTP cache so a new version never installs stale files.
+  const fresh = ASSETS.map(url => new Request(url, { cache: 'reload' }));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(fresh)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -35,7 +37,7 @@ self.addEventListener('fetch', event => {
   const key = req.mode === 'navigate' ? './index.html' : req;
   event.respondWith(caches.open(CACHE).then(async cache => {
     const cached = await cache.match(key, { ignoreSearch: true });
-    const network = fetch(req)
+    const network = fetch(req, { cache: 'no-cache' })
       .then(res => {
         if (res.ok) cache.put(key, res.clone());
         return res;
