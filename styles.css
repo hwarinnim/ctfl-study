@@ -286,14 +286,19 @@ dialog.confirm p { font-size: 0.95rem; line-height: 1.5; color: var(--muted); ma
 .verdict.right { background: var(--accent-soft); color: var(--accent-ink); }
 
 .meta-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+/* Fixed corner radius (not a full pill) so chips that wrap onto several lines
+   become rounded rectangles and the text stays clear of the corners. */
 .chip {
   font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--muted);
   background: var(--chip);
   display: inline-block;
-  padding: 0.2rem 0.7rem;
-  border-radius: 999px;
+  max-width: 100%;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.8em;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* Buttons sit at the bottom of the screen, like an app's toolbar. */
