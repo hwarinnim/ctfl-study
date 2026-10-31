@@ -41,9 +41,36 @@
   }
 
   // Text from the PDFs mixes hard-wrapped prose with indented lists and tables.
-  // Prose lines are re-flowed into paragraphs; indented/columnar runs keep their layout in <pre>.
+  // Prose lines are re-flowed into paragraphs, indented lists into wrapped list items, and
+  // only real columnar tables keep their exact layout in a scrollable <pre>.
   // Only whitespace is touched, never the words themselves.
   const TABULAR = /^\s{3,}\S|\S\s{3,}\S/;
+  const LIST_MARKER = /^\s*(?:•|o|[ivx]+\.|\d+\.|\(\d+\)|[A-Za-z]\.|[a-e]\))\s+/;
+  const indentOf = l => l.match(/^ */)[0].length;
+
+  function indentedBlock(lines) {
+    const body = lines.filter(l => l.trim());
+    const hasColumns = body.some(l => /\S\s{3,}\S/.test(l.replace(LIST_MARKER, '')));
+    if (hasColumns) {
+      const indent = Math.min(...body.map(indentOf));
+      return h('pre', null, lines.map(l => l.slice(indent)).join('\n'));
+    }
+    if (LIST_MARKER.test(body[0])) {
+      // Marker lines start items; other lines continue the previous item.
+      const base = Math.min(...body.filter(l => LIST_MARKER.test(l)).map(indentOf));
+      const items = [];
+      for (const l of body) {
+        if (LIST_MARKER.test(l) || !items.length) {
+          items.push({ text: l.replace(LIST_MARKER, m => m.trim() + ' ').trim(), sub: indentOf(l) > base + 2 });
+        } else {
+          items[items.length - 1].text += ' ' + l.trim();
+        }
+      }
+      return h('div', { class: 'list' }, items.map(it => h('p', { class: it.sub ? 'sub' : null }, it.text)));
+    }
+    // Indented text without columns (quoted user stories, defect reports): keep its lines, let them wrap.
+    return h('div', { class: 'quote' }, body.map(l => l.trim()).join('\n'));
+  }
   function richText(text) {
     const frag = document.createDocumentFragment();
     let prose = [];
@@ -54,10 +81,7 @@
     };
     const flushPre = () => {
       while (pre.length && !pre[pre.length - 1].trim()) pre.pop();
-      if (pre.length) {
-        const indent = Math.min(...pre.filter(l => l.trim()).map(l => l.match(/^ */)[0].length));
-        frag.append(h('pre', null, pre.map(l => l.slice(indent)).join('\n')));
-      }
+      if (pre.length) frag.append(indentedBlock(pre));
       pre = [];
     };
     for (const raw of String(text).replace(/\r/g, '').split('\n')) {
@@ -165,7 +189,7 @@
   }
 
   function mount(...kids) {
-    app.replaceChildren(h('section', { class: 'panel' }, ...kids));
+    app.replaceChildren(h('section', { class: 'panel' }, h('div', { class: 'content' }, ...kids)));
   }
 
   // ---------- mode select ----------
