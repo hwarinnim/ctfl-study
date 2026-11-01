@@ -421,11 +421,6 @@
 
   // ---------- quiz ----------
 
-  function examLabel(q) {
-    const letter = q.exam.replace(/^exam/, '');
-    return `Sample Exam ${letter} · Question ${q.number}`;
-  }
-
   function quizScore(deck) {
     const s = store.get('quizScore');
     return s && s.pass === deck.pass ? s : { pass: deck.pass, answered: 0, correct: 0 };
@@ -530,10 +525,9 @@
       modeTools('quiz', deck,
         score.answered ? `This pass: ${score.correct} / ${score.answered} correct` : (deck.pass > 1 ? `Pass ${deck.pass}` : null)),
       st.submitted && h('div', { class: 'verdict ' + (isRight ? 'right' : 'wrong') }, isRight ? '✓ Correct' : '✕ Incorrect'),
-      h('div', { class: 'qmeta' }, examLabel(q)),
       h('div', { class: 'stem' }, richText(q.stem)),
       q.diagram && h('figure', { class: 'diagram' },
-        h('img', { src: 'data/' + q.diagram, alt: `Diagram for ${examLabel(q)}, from the official sample exam` })),
+        h('img', { src: 'data/' + q.diagram, alt: 'Diagram for this question, from the official sample exam' })),
       hint,
       st.submitted && !isRight && q.rationale_preamble && h('div', { class: 'preamble' },
         h('span', { class: 'lbl' }, 'Official explanation'), q.rationale_preamble),
@@ -1033,7 +1027,7 @@
         if (quiz) {
           const q = QUESTIONS[i];
           return h('li', null,
-            h('div', { class: 'miss-meta' }, `${q.syllabus_section} ${q.syllabus_section_title} · ${examLabel(q).replace('Question', 'Q')}`),
+            h('div', { class: 'miss-meta' }, `${q.syllabus_section} ${q.syllabus_section_title}`),
             h('div', { class: 'miss-text' }, q.stem),
             h('div', { class: 'miss-count' }, missedLine(s)));
         }

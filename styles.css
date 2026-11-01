@@ -184,7 +184,6 @@ dialog.confirm p { font-size: 0.95rem; line-height: 1.5; color: var(--muted); ma
 .mode-card .progress { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
 
 /* question */
-.qmeta { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 0.5rem; }
 .stem { font-size: 1.1rem; line-height: 1.55; margin-bottom: 1.1rem; font-weight: 500; }
 .stem p { margin: 0 0 0.6rem; }
 .stem p:last-child { margin-bottom: 0; }
