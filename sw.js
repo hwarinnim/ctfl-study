@@ -1,6 +1,6 @@
 // Offline support: everything is cached on install, then served from cache while
 // a fresh copy is fetched in the background (so updates show up on the next launch).
-const CACHE = 'ctfl-study-v9';
+const CACHE = 'ctfl-study-v10';
 const ASSETS = [
   './',
   './index.html',
